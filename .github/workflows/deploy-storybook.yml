@@ -2,9 +2,6 @@ name: Release
 
 on:
   push:
-    paths:
-      - ".storybook/**"
-      - "src/stories/**"
     branches:
       - main
 
@@ -18,9 +15,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Check changed stories
         id: stories
