@@ -16,18 +16,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check changed stories
-        id: stories
-        run: |
-          echo "changed=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q -e '^\.storybook/' -e '^stories/' && echo true || echo false)" >> $GITHUB_OUTPUT
-        shell: bash
-
       - name: Build Storybook
-        if: steps.stories.outputs.changed == 'true' || steps.changesets.outputs.published == 'true'
         run: pnpm build-storybook
 
-      - name: Update Storybook
-        if: steps.stories.outputs.changed == 'true' || steps.changesets.outputs.published == 'true'
+      - name:  Release Storybook
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
           branch: gh-pages
