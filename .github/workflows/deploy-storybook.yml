@@ -1,43 +1,42 @@
-name: Deploy Storybook to GitHub Pages
+name: Release
 
 on:
   push:
+    paths:
+      - ".storybook/**"
+      - "src/stories/**"
     branches:
-      - develop
       - main
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Chekcout code
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ./package.json
-          cache: 'pnpm'
-          cache-dependency-path: '**/pnpm-lock.yaml'
-      - name: Install Node Dependencies
-        run: pnpm ci
-      - name: Build storybook
-        run: pnpm build-storybook
-      - name: Upload Documents
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./storybook-static
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
 
-  # Deploy the artifact to GitHub pages.
-  # This is a separate job so that only actions/deploy-pages has the necessary permissions.
-  deploy:
-    needs: build
+jobs:
+  release:
+    name: Release
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Check changed stories
+        id: stories
+        run: |
+          echo "changed=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q -e '^\.storybook/' -e '^stories/' && echo true || echo false)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Build Storybook
+        if: steps.stories.outputs.changed == 'true' || steps.changesets.outputs.published == 'true'
+        run: pnpm build-storybook
+
+      - name: Update Storybook
+        if: steps.stories.outputs.changed == 'true' || steps.changesets.outputs.published == 'true'
+        uses: JamesIves/github-pages-deploy-action@v4.5.0
+        with:
+          branch: gh-pages
+          folder: storybook-static
+          clean: true
+          clean-exclude: .nojekyll
